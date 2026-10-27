@@ -1,0 +1,15 @@
+{
+  "name": "ngfw-tickets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nigeria Gala Fashion Week: online ticketing (MERN + Paystack + Nodemailer)",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "concurrently -k -n api,web -c yellow,cyan \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "test": "npm test --prefix server",
+    "build": "npm run build --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

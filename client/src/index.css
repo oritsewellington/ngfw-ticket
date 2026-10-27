@@ -1,0 +1,122 @@
+@import 'tailwindcss';
+
+/* Tailwind v4: design tokens live here in CSS. Each token becomes utilities (bg-gold, text-ivory, font-display ...) */
+@theme {
+  --color-ink: #0d0a08;
+  --color-ink-2: #15100c;
+  --color-ink-3: #1d1610;
+  --color-line: #3a2c1f;
+  --color-gold: #e2b865;
+  --color-gold-2: #f0cf8e;
+  --color-ivory: #f6ecd9;
+  --color-sand: #d9cbb4;
+  --color-muted: #a8957a;
+  --color-clay: #b5543a;
+  --color-ok: #5fbf8f;
+  --color-bad: #e5594f;
+  --color-warn: #e8a53c;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Playfair Display', ui-serif, Georgia, serif;
+
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--color-ink);
+    color: var(--color-ivory);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: var(--color-gold);
+    color: var(--color-ink);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line) transparent;
+  }
+}
+
+@layer components {
+  .field-input {
+    width: 100%;
+    background: var(--color-ink-2);
+    border: 1px solid var(--color-line);
+    border-radius: 0.8rem;
+    padding: 0.8rem 1rem;
+    color: var(--color-ivory);
+    font-size: 0.95rem;
+    outline: none;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+  }
+  .field-input::placeholder {
+    color: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  }
+  .field-input:focus {
+    border-color: var(--color-gold);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 18%, transparent);
+  }
+  .field-input[aria-invalid='true'] {
+    border-color: var(--color-bad);
+  }
+  select.field-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23a8957a' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    padding-right: 2.5rem;
+  }
+  .gold-text {
+    background: linear-gradient(100deg, var(--color-gold) 10%, var(--color-gold-2) 40%, var(--color-gold) 70%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+/* The scanner camera box */
+#reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  border-radius: 1.25rem;
+}
+#reader {
+  border: none !important;
+}

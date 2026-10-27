@@ -1,0 +1,46 @@
+# Optional: Render "Blueprint" for the API. Or create a Web Service by hand with the same settings.
+services:
+  - type: web
+    name: ngfw-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        sync: false # your Vercel URL, e.g. https://tickets.example.com
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TICKET_SECRET
+        sync: false # generate once and NEVER change it after tickets are sold
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: ADMIN_NAME
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: HOST_NAME
+        sync: false
+      - key: HOST_EMAIL
+        sync: false
+      - key: HOST_PASSWORD
+        sync: false
+      - key: PLATFORM_SHARE_PERCENT
+        value: "10"
