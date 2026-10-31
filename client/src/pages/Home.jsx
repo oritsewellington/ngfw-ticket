@@ -342,22 +342,21 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="overflow-hidden border-y border-gold/20 bg-gold py-3 text-ink">
-        <div className="flex whitespace-nowrap text-xs font-bold tracking-[0.4em]">
+      {/* Pure CSS animation: it starts immediately and keeps running even while the page is busy loading. */}
+      <div
+        className="overflow-hidden border-y border-gold/20 bg-gold py-3 text-ink"
+        aria-hidden="true"
+      >
+        <div className="flex w-max animate-marquee whitespace-nowrap text-xs font-bold tracking-[0.4em] will-change-transform motion-reduce:animate-none">
           {[0, 1].map((k) => (
-            <motion.div
-              key={k}
-              animate={{ x: ["0%", "-100%"] }}
-              transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
-              className="flex shrink-0 gap-10 pr-10"
-            >
+            <div key={k} className="flex shrink-0 gap-10 pr-10">
               {Array.from({ length: 6 }).map((_, i) => (
                 <span key={i} className="flex items-center gap-10">
                   REDEFINING FASHION THROUGH OUR CULTURE AND HERITAGE{" "}
                   <Sparkles className="size-3.5" />
                 </span>
               ))}
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* Tailwind v4: design tokens live here in CSS. Each token becomes utilities (bg-gold, text-ivory, font-display ...) */
 @theme {
@@ -16,11 +16,13 @@
   --color-bad: #e5594f;
   --color-warn: #e8a53c;
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Playfair Display', ui-serif, Georgia, serif;
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Playfair Display", ui-serif, Georgia, serif;
 
   --animate-shimmer: shimmer 2.4s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
+  --animate-marquee: marquee 34s linear infinite;
 
   @keyframes shimmer {
     0% {
@@ -37,6 +39,15 @@
     }
     50% {
       transform: translateY(-8px);
+    }
+  }
+  /* The track holds the same content twice, so sliding it by exactly half loops with no jump. */
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
     }
   }
 }
@@ -84,7 +95,7 @@
     border-color: var(--color-gold);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 18%, transparent);
   }
-  .field-input[aria-invalid='true'] {
+  .field-input[aria-invalid="true"] {
     border-color: var(--color-bad);
   }
   select.field-input {
@@ -95,13 +106,18 @@
     padding-right: 2.5rem;
   }
   .gold-text {
-    background: linear-gradient(100deg, var(--color-gold) 10%, var(--color-gold-2) 40%, var(--color-gold) 70%);
+    background: linear-gradient(
+      100deg,
+      var(--color-gold) 10%,
+      var(--color-gold-2) 40%,
+      var(--color-gold) 70%
+    );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
   .grain::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
