@@ -15,9 +15,15 @@ function getTransporter() {
   const pass = process.env.SMTP_PASS;
   if (!user || !pass) return null;
   if (!transporter) {
+    const port = Number(process.env.SMTP_PORT || 2525);
     transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: process.env.SMTP_HOST || "smtp-relay.brevo.com",
+      port,
+      secure: port === 465, // 2525 / 587 start plain, then upgrade (STARTTLS)
       auth: { user, pass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
     });
   }
   return transporter;
@@ -147,7 +153,7 @@ async function attempt(job) {
       job.mode = "dev-log";
     } else {
       await tx.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        from: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER,
         to: job.to,
         subject: job.subject,
         text: mail.text,
