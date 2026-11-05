@@ -51,6 +51,7 @@ const publicEvent = (e) => ({
   address: e.address,
   schedule: e.schedule,
   heroImage: e.heroImage,
+  heroImages: e.heroImages || [],
   salesOpen: e.salesOpen,
   transferEnabled: e.transferEnabled,
   transferCutoffHours: e.transferCutoffHours,
@@ -267,6 +268,7 @@ router.post(
         reference,
         callbackUrl: `${config.clientUrl}/order/${reference}`,
         metadata: {
+          app: "tickets",
           orderId: String(order._id),
           tickets: items.length,
           buyerName,
