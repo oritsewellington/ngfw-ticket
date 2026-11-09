@@ -22,6 +22,7 @@ import {
 } from "../lib/validate.js";
 import { createManualOrder, remainingFor, tierStats } from "../lib/issue.js";
 import { enqueueEmail } from "../lib/mailer.js";
+import { currentPrice, earlyBirdState } from "../lib/pricing.js";
 import { formatEventDate } from "../lib/ticketPdf.js";
 import { bust } from "../lib/cache.js";
 
@@ -94,6 +95,22 @@ router.patch(
         }));
       changes.push("schedule");
     }
+    if (Array.isArray(b.heroImages)) {
+      const urls = b.heroImages.map((u) => String(u).trim()).filter(Boolean);
+      if (
+        urls.some(
+          (u) => !/^(https?:\/\/\S+|\/[\w\-./]+)$/i.test(u) || u.length > 500,
+        )
+      ) {
+        throw new AppError(
+          "Each banner image must be a web link starting with https:// (or a file in your site, like /flyer.jpg).",
+          400,
+          "validation",
+        );
+      }
+      event.heroImages = urls.slice(0, 8);
+      changes.push("banner images");
+    }
     if (Array.isArray(b.contactPhones))
       event.contactPhones = b.contactPhones
         .map((p) => String(p).trim())
@@ -151,7 +168,7 @@ router.patch(
 );
 
 /* ---------------- Tiers ---------------- */
-function tierPayload(b, partial = false) {
+function tierPayload(b, partial = false, current = null) {
   const out = {};
   if (!partial || b.name !== undefined)
     out.name = cleanName(b.name, "ticket name");
@@ -164,6 +181,63 @@ function tierPayload(b, partial = false) {
         "validation",
       );
     out.price = price;
+  }
+  if (
+    ["earlyPrice", "earlyStartsAt", "earlyEndsAt"].some(
+      (k) => b[k] !== undefined,
+    )
+  ) {
+    const blank = (v) => v === "" || v === null || v === undefined;
+    if (blank(b.earlyPrice) && blank(b.earlyStartsAt) && blank(b.earlyEndsAt)) {
+      // Everything empty = no early-bird offer.
+      out.earlyPrice = undefined;
+      out.earlyStartsAt = undefined;
+      out.earlyEndsAt = undefined;
+      out.$unsetEarly = true;
+    } else {
+      if (
+        blank(b.earlyPrice) ||
+        blank(b.earlyStartsAt) ||
+        blank(b.earlyEndsAt)
+      ) {
+        throw new AppError(
+          "For an early-bird offer, please fill in the early-bird price, the start date and the end date.",
+          400,
+          "validation",
+        );
+      }
+      const early = Math.round(Number(b.earlyPrice) * 100);
+      if (!Number.isFinite(early) || early < 10000)
+        throw new AppError(
+          "The early-bird price must be at least ₦100.",
+          400,
+          "validation",
+        );
+      const normal = out.price ?? current?.price;
+      if (normal !== undefined && early >= normal)
+        throw new AppError(
+          "The early-bird price must be lower than the normal ticket price.",
+          400,
+          "validation",
+        );
+      const starts = new Date(b.earlyStartsAt);
+      const ends = new Date(b.earlyEndsAt);
+      if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime()))
+        throw new AppError(
+          "Please choose a valid start and end date for the early-bird price.",
+          400,
+          "validation",
+        );
+      if (ends <= starts)
+        throw new AppError(
+          "The early-bird end date must be after the start date.",
+          400,
+          "validation",
+        );
+      out.earlyPrice = early;
+      out.earlyStartsAt = starts;
+      out.earlyEndsAt = ends;
+    }
   }
   if (!partial || b.capacity !== undefined) {
     const cap = parseInt(b.capacity, 10);
@@ -201,6 +275,8 @@ router.get(
       tiers: tiers.map((t) => ({
         ...t.toObject(),
         id: t._id,
+        earlyState: earlyBirdState(t),
+        currentPrice: currentPrice(t),
         sold: stats.get(String(t._id))?.sold || 0,
         remaining: remainingFor(t, stats),
       })),
@@ -212,10 +288,8 @@ router.post(
   "/tiers",
   asyncHandler(async (req, res) => {
     const count = await Tier.countDocuments();
-    const tier = await Tier.create({
-      sortOrder: count + 1,
-      ...tierPayload(req.body),
-    });
+    const { $unsetEarly, ...fields } = tierPayload(req.body);
+    const tier = await Tier.create({ sortOrder: count + 1, ...fields });
     await audit(
       req.user,
       "tier_created",
@@ -237,11 +311,16 @@ router.patch(
       );
     const before = {
       price: tier.price,
+      earlyPrice: tier.earlyPrice,
+      earlyStartsAt: tier.earlyStartsAt,
+      earlyEndsAt: tier.earlyEndsAt,
       capacity: tier.capacity,
       active: tier.active,
       name: tier.name,
     };
-    const upd = tierPayload(req.body, true);
+    const upd = tierPayload(req.body, true, tier);
+    const clearEarly = upd.$unsetEarly;
+    delete upd.$unsetEarly;
     if (upd.capacity !== undefined) {
       const sold = await Ticket.countDocuments({
         tier: tier._id,
@@ -255,10 +334,30 @@ router.patch(
         );
     }
     Object.assign(tier, upd);
+    if (clearEarly) {
+      tier.earlyPrice = undefined;
+      tier.earlyStartsAt = undefined;
+      tier.earlyEndsAt = undefined;
+    }
+    // A normal price that drops to or below an existing early-bird price would make the offer meaningless.
+    if (tier.earlyPrice && tier.earlyPrice >= tier.price)
+      throw new AppError(
+        "The normal price must stay higher than the early-bird price. Change or clear the early-bird offer first.",
+        400,
+        "validation",
+      );
     await tier.save();
     const diffs = [];
     if (tier.price !== before.price)
       diffs.push(`price ${naira(before.price)} to ${naira(tier.price)}`);
+    const earlyBefore = `${before.earlyPrice || ""}|${before.earlyStartsAt?.getTime?.() || ""}|${before.earlyEndsAt?.getTime?.() || ""}`;
+    const earlyAfter = `${tier.earlyPrice || ""}|${tier.earlyStartsAt?.getTime?.() || ""}|${tier.earlyEndsAt?.getTime?.() || ""}`;
+    if (earlyBefore !== earlyAfter)
+      diffs.push(
+        tier.earlyPrice
+          ? `early-bird ${naira(tier.earlyPrice)} from ${tier.earlyStartsAt.toISOString()} to ${tier.earlyEndsAt.toISOString()}`
+          : "early-bird offer removed",
+      );
     if (tier.capacity !== before.capacity)
       diffs.push(`available ${before.capacity} to ${tier.capacity}`);
     if (tier.active !== before.active)
@@ -502,9 +601,11 @@ router.post(
         : "complimentary_tickets_issued",
       `${attendees.length} x ${tier.name} to ${buyerEmail} (order ${order.reference})`,
     );
-    res.status(201).json({
-      message: `${attendees.length} ${tier.name} ${attendees.length === 1 ? "ticket was" : "tickets were"} issued and emailed to ${buyerEmail}.`,
-    });
+    res
+      .status(201)
+      .json({
+        message: `${attendees.length} ${tier.name} ${attendees.length === 1 ? "ticket was" : "tickets were"} issued and emailed to ${buyerEmail}.`,
+      });
   }),
 );
 

@@ -20,7 +20,7 @@ import {
   useValidatePromoMutation,
 } from "../store/api";
 import { act } from "../lib/act";
-import { isEmail, naira } from "../lib/format";
+import { fmtDate, isEmail, naira } from "../lib/format";
 import {
   Badge,
   Button,
@@ -249,7 +249,17 @@ export default function Checkout() {
                         </p>
                         <p className="mt-1 font-display text-3xl font-bold text-ivory">
                           {naira(t.price)}
+                          {t.earlyBird && (
+                            <span className="ml-2 text-base font-normal text-muted line-through">
+                              {naira(t.regularPrice)}
+                            </span>
+                          )}
                         </p>
+                        {t.earlyBird && (
+                          <p className="mt-1 text-[11px] font-medium text-ok">
+                            Early-bird · ends {fmtDate(t.earlyBird.endsAt)}
+                          </p>
+                        )}
                       </div>
                       {t.soldOut && <Badge tone="bad">SOLD OUT</Badge>}
                     </div>
@@ -523,8 +533,16 @@ export default function Checkout() {
                         {nameOf(it, i) || (i === 0 ? "You" : `Guest ${i + 1}`)}
                       </span>
                     </span>
-                    <span className="tabular-nums text-ivory">
+                    <span className="text-right tabular-nums text-ivory">
                       {naira(t?.price || 0)}
+                      {t?.earlyBird && (
+                        <>
+                          <br />
+                          <span className="text-[11px] text-ok">
+                            Early-bird
+                          </span>
+                        </>
+                      )}
                     </span>
                   </li>
                 );
@@ -547,6 +565,19 @@ export default function Checkout() {
             </div>
 
             <dl className="mt-5 space-y-2 border-t border-line pt-5 text-sm">
+              {items.some((i) => tierMap.get(i.tierId)?.earlyBird) && (
+                <div className="flex justify-between text-ok">
+                  <dt>Early-bird savings</dt>
+                  <dd className="tabular-nums">
+                    {naira(
+                      items.reduce((s, i) => {
+                        const t = tierMap.get(i.tierId);
+                        return s + (t?.earlyBird ? t.earlyBird.savings : 0);
+                      }, 0),
+                    )}
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between text-sand">
                 <dt>Subtotal</dt>
                 <dd className="tabular-nums">{naira(subtotal)}</dd>

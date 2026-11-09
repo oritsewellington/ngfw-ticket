@@ -1,6 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { Event, Order, Promo, Ticket, Tier } from "../models/index.js";
+import { currentPrice, earlyBirdState, priceView } from "../lib/pricing.js";
 import { AppError, asyncHandler } from "../lib/errors.js";
 import { buildQrPayload, generateReference } from "../lib/crypto.js";
 import { cleanEmail, cleanName, cleanPhone } from "../lib/validate.js";
@@ -111,7 +112,7 @@ router.get(
           return {
             id: t._id,
             name: t.name,
-            price: t.price,
+            ...priceView(t),
             color: t.color,
             description: t.description,
             perks: t.perks,
@@ -205,7 +206,10 @@ router.post(
         tier: tier._id,
         tierName: tier.name,
         tierColor: tier.color,
-        unitPrice: tier.price,
+        unitPrice: currentPrice(tier),
+        earlyBird: earlyBirdState(tier) === "active",
+        regularPrice:
+          earlyBirdState(tier) === "active" ? tier.price : undefined,
         attendeeName: cleanName(raw.attendeeName, `name for ticket ${idx + 1}`),
         attendeeEmail: cleanEmail(raw.attendeeEmail, {
           required: false,
@@ -338,6 +342,8 @@ router.get(
         tierName: i.tierName,
         attendeeName: i.attendeeName,
         unitPrice: i.unitPrice,
+        regularPrice: i.regularPrice,
+        earlyBird: Boolean(i.earlyBird),
       })),
       tickets: tickets
         .filter((t) => t.status !== "void")
@@ -468,9 +474,11 @@ router.post(
       label: "new holder's email address",
     });
     const fresh = await transferTicket(ticket, { name, email }, event);
-    res.status(201).json({
-      message: `Done! A new ticket for ${fresh.attendeeName} is on its way to ${email}. Your old QR code has stopped working.`,
-    });
+    res
+      .status(201)
+      .json({
+        message: `Done! A new ticket for ${fresh.attendeeName} is on its way to ${email}. Your old QR code has stopped working.`,
+      });
   }),
 );
 

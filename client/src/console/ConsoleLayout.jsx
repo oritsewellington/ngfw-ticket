@@ -27,6 +27,7 @@ import {
   X,
   ReceiptText,
   Gift,
+  QrCode,
 } from "lucide-react";
 import { logout } from "../store/authSlice";
 import { Badge, Logo, cn } from "../components/ui";
@@ -40,6 +41,7 @@ const HOST_NAV = [
   { to: "/console/event", label: "Event & policy", icon: CalendarCog },
   { to: "/console/promos", label: "Promo codes", icon: Tag },
   { to: "/console/issue", label: "Issue tickets", icon: Gift },
+  { to: "/console/share", label: "Share & QR code", icon: QrCode },
   { to: "/console/activity", label: "Activity log", icon: Activity },
 ];
 const ADMIN_NAV = [

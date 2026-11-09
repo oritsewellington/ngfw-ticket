@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { EmailJob, Event, Ticket } from "../models/index.js";
+import { EmailJob, Event, Order, Ticket } from "../models/index.js";
 import {
   formatEventDate,
   qrPng,
@@ -48,11 +48,32 @@ const INTROS = {
   find: "You asked us to resend your tickets. They are below.",
 };
 
+const nairaFmt = (k) =>
+  `₦${(k / 100).toLocaleString("en-NG", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+/** What the buyer paid for this ticket, incl. the early-bird note. Transferred tickets never show a price. */
+function priceNote(t, orders) {
+  if (t.generation) return null;
+  const item = orders.get(String(t.order))?.items?.[t.itemIndex];
+  if (!item || !item.unitPrice) return null;
+  return item.earlyBird && item.regularPrice
+    ? {
+        text: `${nairaFmt(item.unitPrice)} (early-bird price)`,
+        sub: `Normal price ${nairaFmt(item.regularPrice)} - you saved ${nairaFmt(item.regularPrice - item.unitPrice)}`,
+      }
+    : { text: nairaFmt(item.unitPrice), sub: "" };
+}
+
 async function renderEmail({ kind, event, tickets }) {
+  const orderDocs = await Order.find({
+    _id: { $in: [...new Set(tickets.map((t) => String(t.order)))] },
+  }).select("items");
+  const orders = new Map(orderDocs.map((o) => [String(o._id), o]));
   const attachments = [];
   const cards = [];
 
   for (const t of tickets) {
+    const note = priceNote(t, orders);
     const cid = `qr-${t.code}@ngfw`;
     const png = await qrPng(t.code, 320);
     attachments.push({
@@ -75,7 +96,8 @@ async function renderEmail({ kind, event, tickets }) {
             <span style="display:inline-block;background:${esc(t.tierColor || "#e2b865")};color:#120d0a;font:700 11px Arial,sans-serif;letter-spacing:2px;padding:6px 14px;border-radius:999px;">${esc(String(t.tierName).toUpperCase())}</span>
             <p style="margin:16px 0 2px;font:11px Arial,sans-serif;letter-spacing:3px;color:#a8957a;">ATTENDEE</p>
             <p style="margin:0 0 14px;font:700 24px Georgia,serif;color:#f6ecd9;">${esc(t.attendeeName)}</p>
-            <p style="margin:0 0 14px;font:700 13px 'Courier New',monospace;color:#e2b865;">${esc(t.code)}</p>
+            <p style="margin:0 0 ${note ? 8 : 14}px;font:700 13px 'Courier New',monospace;color:#e2b865;">${esc(t.code)}</p>
+            ${note ? `<p style="margin:0 0 14px;font:13px/1.5 Arial,sans-serif;color:#d9cbb4;">Paid: <strong style="color:#f6ecd9;">${esc(note.text)}</strong>${note.sub ? `<br/><span style="color:#a8957a;">${esc(note.sub)}</span>` : ""}</p>` : ""}
             <a href="${ticketUrl(t)}" style="display:inline-block;background:#e2b865;color:#120d0a;text-decoration:none;font:700 13px Arial,sans-serif;padding:11px 20px;border-radius:10px;">Open ticket</a>
           </td>
           <td width="190" style="padding:22px;vertical-align:middle;text-align:center;">
@@ -117,7 +139,7 @@ async function renderEmail({ kind, event, tickets }) {
     "",
     ...tickets.map(
       (t) =>
-        `${t.tierName} - ${t.attendeeName}\nCode: ${t.code}\nOpen: ${ticketUrl(t)}`,
+        `${t.tierName} - ${t.attendeeName}\nCode: ${t.code}${priceNote(t, orders) ? `\nPaid: ${priceNote(t, orders).text}` : ""}\nOpen: ${ticketUrl(t)}`,
     ),
     "",
     `${formatEventDate(event.startsAt)} | ${scheduleLine(event)} | ${event.venue}`,
@@ -153,7 +175,10 @@ async function attempt(job) {
       job.mode = "dev-log";
     } else {
       await tx.sendMail({
-        from: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER,
+        from:
+          process.env.MAIL_FROM ||
+          process.env.SMTP_FROM ||
+          process.env.SMTP_USER,
         to: job.to,
         subject: job.subject,
         text: mail.text,
