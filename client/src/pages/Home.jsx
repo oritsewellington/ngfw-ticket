@@ -27,7 +27,6 @@ import {
   Skeleton,
   cn,
 } from "../components/ui";
-import HeroSlider from "../components/HeroSlider";
 
 function useCountdown(target) {
   const [now, setNow] = useState(Date.now());
@@ -48,11 +47,7 @@ function useCountdown(target) {
 function Countdown({ target }) {
   const { d, h, m, s, done } = useCountdown(target);
   if (done)
-    return (
-      <p className="font-display text-2xl text-gold">
-        The show is on. Welcome!
-      </p>
-    );
+    return <p className="font-display text-2xl text-gold">On Sale Now</p>;
   return (
     <div className="flex gap-3">
       {[
@@ -285,10 +280,25 @@ export default function Home() {
   return (
     <div>
       {/* HERO: the banner slider comes first and shows every image in full. All the text sits BELOW it, never on top. */}
-      <section className="relative isolate">
-        <HeroSlider images={heroImages} />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[75%] bg-[radial-gradient(60%_60%_at_50%_0%,rgba(226,184,101,0.13),transparent)]" />
-        <div className="mx-auto flex max-w-4xl flex-col items-center px-5 pb-16 pt-10 text-center sm:pt-14">
+      <section className="relative isolate overflow-hidden grain">
+        {/* Desktop / tablet: the photo is a wide backdrop behind the text. */}
+        <img
+          src={event.heroImage || "/hero.jpg"}
+          alt=""
+          className="absolute inset-0 -z-20 hidden h-full w-full object-cover object-top opacity-50 md:block"
+        />
+        <div className="absolute inset-0 -z-10 hidden bg-gradient-to-b from-ink/70 via-ink/60 to-ink md:block" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_50%_30%,rgba(226,184,101,0.16),transparent)]" />
+        {/* Phones: show the WHOLE group photo at its natural shape (nobody cropped out), fading into the page. */}
+        <div className="relative md:hidden">
+          <img
+            src={event.heroImage || "/hero.jpg"}
+            alt="Models in traditional Nigerian attire"
+            className="aspect-[810/475] w-full object-cover"
+          />
+          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-ink via-ink/70 to-transparent" />
+        </div>
+        <div className="mx-auto -mt-10 flex max-w-6xl flex-col items-center justify-center px-5 pb-16 text-center md:mt-0 md:min-h-[88dvh] md:py-20">
           <motion.p
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
